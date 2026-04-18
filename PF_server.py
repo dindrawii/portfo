@@ -1,20 +1,19 @@
 import csv
 
 from flask import Flask, render_template, request, redirect
-
+# hello
 
 app = Flask(__name__)
 
-@app.route("/")                        
-def home():                     
+@app.route("/")
+def home():
     return render_template('index.html')
-
 
 @app.route("/submit_form", methods=['POST', 'GET'])
 def submit_form():
     if request.method == 'POST':
         try:
-                
+
             data = request.form.to_dict()
             addTOdatabase(data)
             return redirect('/thankyou.html')
@@ -34,7 +33,6 @@ def addTOdatabase(data):
         email = data["email"]
         subject = data["subject"]
         message = data["message"]
-        csvW = csv.writer(database, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)  
-        csvW.writerow([email,subject,message])        
+        csvW = csv.writer(database, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        csvW.writerow([email,subject,message])
 
-    
