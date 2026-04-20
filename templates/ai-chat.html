@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta content="IE=edge" http-equiv="X-UA-Compatible">
+  <meta content="width=device-width,initial-scale=1" name="viewport">
+  <title>AI Chat Project | Eng. Mohammed</title>
+
+  <link rel="apple-touch-icon" sizes="180x180" href="./static/assets/apple-icon-180x180.png">
+  <link href="./static/assets/favicon.ico" rel="icon">
+  <link href="./static/main.3f6952e4.css" rel="stylesheet">
+  <link href="./static/chat.css" rel="stylesheet">
+</head>
+
+<body class="">
+<div id="site-border-left"></div>
+<div id="site-border-right"></div>
+<div id="site-border-top"></div>
+<div id="site-border-bottom"></div>
+
+<header>
+  <nav class="navbar navbar-fixed-top navbar-default">
+    <div class="container">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar-collapse" aria-expanded="false">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navbar-collapse">
+        <ul class="nav navbar-nav">
+          <li><a href="./index.html">01 : Home</a></li>
+          <li><a href="./works.html" class="active">02 : Works</a></li>
+          <li><a href="./about.html">03 : About me</a></li>
+          <li><a href="./contact.html">04 : Contact</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+</header>
+
+<div class="section-container">
+  <div class="container">
+    <div class="row">
+      <div class="col-xs-12">
+        <div class="card-container">
+          <div class="text-center">
+            <h1 class="h2">AI Chat Portfolio Project</h1>
+            <p>Flask + OpenRouter + JavaScript frontend integration</p>
+          </div>
+
+          <p>
+            This project demonstrates API integration, environment variable handling,
+            frontend-backend communication, and a working AI assistant inside my portfolio website.
+          </p>
+
+          <div class="chat-shell">
+            <div id="chat-box" class="chat-box">
+              <div class="message assistant">
+                <div class="bubble">Hello. I’m the portfolio AI assistant. Ask me anything about this project.</div>
+              </div>
+            </div>
+
+            <form id="chat-form" class="chat-form">
+              <textarea id="message-input" placeholder="Type your message..." rows="3" required></textarea>
+              <div class="chat-actions">
+                <button type="submit" class="btn btn-default">Send</button>
+              </div>
+            </form>
+
+            <p id="chat-status" class="chat-status"></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="./static/ai-chat.js"></script>
+<script type="text/javascript" src="./static/main.70a66962.js"></script>
+</body>
+</html>
