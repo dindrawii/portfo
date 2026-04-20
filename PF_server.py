@@ -8,18 +8,26 @@ from flask import Flask, render_template, request, redirect, jsonify
 
 app = Flask(__name__)
 
+# =========================
+# LOAD ENV VARIABLES
+# =========================
 BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / ".env")
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
+print("Loaded API Key:", OPENROUTER_API_KEY)  # Debug check
 
+
+# =========================
+# OPENROUTER FUNCTION
+# =========================
 def ask_openrouter(user_message):
     if not OPENROUTER_API_KEY:
         return {
             "ok": False,
-            "error": "OPENROUTER_API_KEY was not found in the .env file.",
+            "error": "OPENROUTER_API_KEY not found in .env",
             "status_code": 500,
         }
 
@@ -35,10 +43,7 @@ def ask_openrouter(user_message):
                 "messages": [
                     {
                         "role": "system",
-                        "content": (
-                            "You are a helpful assistant on Mohammed Dandrawi's portfolio website. "
-                            "Be clear, friendly, and concise."
-                        ),
+                        "content": "You are a helpful assistant on Mohammed Dandrawi's portfolio website. Be clear, friendly, and concise.",
                     },
                     {
                         "role": "user",
@@ -48,6 +53,9 @@ def ask_openrouter(user_message):
             },
             timeout=60,
         )
+
+        print("OpenRouter status:", response.status_code)
+        print("OpenRouter response:", response.text)
 
         data = response.json()
 
@@ -68,16 +76,21 @@ def ask_openrouter(user_message):
     except requests.exceptions.Timeout:
         return {
             "ok": False,
-            "error": "The AI request timed out. Please try again.",
+            "error": "Request timed out.",
             "status_code": 504,
         }
-    except Exception as exc:
+    except Exception as e:
+        print("ERROR in ask_openrouter:", repr(e))
         return {
             "ok": False,
-            "error": str(exc),
+            "error": str(e),
             "status_code": 500,
         }
 
+
+# =========================
+# ROUTES
+# =========================
 
 @app.route("/")
 def home():
@@ -89,45 +102,62 @@ def submit_form():
     if request.method == "POST":
         try:
             data = request.form.to_dict()
-            addTOdatabase(data)
+            add_to_database(data)
             return redirect("/thankyou.html")
-        except Exception:
-            return "Did not save to the DataBase"
+        except Exception as e:
+            print("Form error:", e)
+            return "Did not save to the database"
     else:
         return "Something went wrong"
 
 
+# 🔥 AI CHAT ENDPOINT
 @app.route("/api/chat", methods=["POST"])
 def api_chat():
-    data = request.get_json(silent=True) or {}
-    user_message = (data.get("message") or "").strip()
+    try:
+        data = request.get_json(silent=True) or {}
+        print("Incoming:", data)
 
-    if not user_message:
-        return jsonify({"ok": False, "error": "Message is required."}), 400
+        user_message = (data.get("message") or "").strip()
 
-    result = ask_openrouter(user_message)
-    return jsonify(result), result.get("status_code", 500)
+        if not user_message:
+            return jsonify({"ok": False, "error": "Message is required."}), 400
+
+        result = ask_openrouter(user_message)
+
+        return jsonify(result), result.get("status_code", 500)
+
+    except Exception as e:
+        print("API ERROR:", repr(e))
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 
+# 🔥 IMPORTANT: THIS MUST BE LIKE THIS
 @app.route("/<string:page>")
 def page(page):
     return render_template(page)
 
 
-def addTOdatabase(data):
+# =========================
+# DATABASE
+# =========================
+def add_to_database(data):
     with open("database.csv", mode="a", newline="", encoding="utf-8") as database:
         email = data["email"]
         subject = data["subject"]
         message = data["message"]
 
-        csvW = csv.writer(
+        writer = csv.writer(
             database,
             delimiter=",",
             quotechar='"',
             quoting=csv.QUOTE_MINIMAL,
         )
-        csvW.writerow([email, subject, message])
+        writer.writerow([email, subject, message])
 
 
+# =========================
+# RUN APP
+# =========================
 if __name__ == "__main__":
     app.run(debug=True)
