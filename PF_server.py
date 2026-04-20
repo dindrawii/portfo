@@ -19,7 +19,8 @@ def ask_openrouter(user_message):
     if not OPENROUTER_API_KEY:
         return {
             "ok": False,
-            "error": "OPENROUTER_API_KEY was not found in the .env file."
+            "error": "OPENROUTER_API_KEY was not found in the .env file.",
+            "status_code": 500,
         }
 
     try:
@@ -61,17 +62,20 @@ def ask_openrouter(user_message):
             "ok": True,
             "reply": data["choices"][0]["message"]["content"],
             "model": data.get("model", "openrouter/free"),
+            "status_code": 200,
         }
 
     except requests.exceptions.Timeout:
         return {
             "ok": False,
-            "error": "The AI request timed out. Please try again."
+            "error": "The AI request timed out. Please try again.",
+            "status_code": 504,
         }
     except Exception as exc:
         return {
             "ok": False,
-            "error": str(exc)
+            "error": str(exc),
+            "status_code": 500,
         }
 
 
@@ -87,7 +91,7 @@ def submit_form():
             data = request.form.to_dict()
             addTOdatabase(data)
             return redirect("/thankyou.html")
-        except:
+        except Exception:
             return "Did not save to the DataBase"
     else:
         return "Something went wrong"
@@ -102,8 +106,7 @@ def api_chat():
         return jsonify({"ok": False, "error": "Message is required."}), 400
 
     result = ask_openrouter(user_message)
-    status_code = 200 if result.get("ok") else result.get("status_code", 500)
-    return jsonify(result), status_code
+    return jsonify(result), result.get("status_code", 500)
 
 
 @app.route("/<string:page>")
@@ -112,7 +115,7 @@ def page(page):
 
 
 def addTOdatabase(data):
-    with open("database.csv", mode="a", newline="") as database:
+    with open("database.csv", mode="a", newline="", encoding="utf-8") as database:
         email = data["email"]
         subject = data["subject"]
         message = data["message"]
@@ -121,6 +124,10 @@ def addTOdatabase(data):
             database,
             delimiter=",",
             quotechar='"',
-            quoting=csv.QUOTE_MINIMAL
+            quoting=csv.QUOTE_MINIMAL,
         )
         csvW.writerow([email, subject, message])
+
+
+if __name__ == "__main__":
+    app.run(debug=True)
