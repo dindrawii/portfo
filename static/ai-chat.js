@@ -1,52 +1,104 @@
-const chatForm = document.getElementById('chat-form');
-const messageInput = document.getElementById('message-input');
-const chatBox = document.getElementById('chat-box');
-const chatStatus = document.getElementById('chat-status');
+(function () {
+  const widget = document.createElement("div");
 
-function addMessage(role, text) {
-  const wrapper = document.createElement('div');
-  wrapper.className = `message ${role}`;
+  widget.innerHTML = `
+    <button id="portfolio-chat-toggle" aria-label="Open portfolio assistant">
+      💬
+    </button>
 
-  const bubble = document.createElement('div');
-  bubble.className = 'bubble';
-  bubble.textContent = text;
+    <section id="portfolio-chat-window" class="portfolio-chat-hidden">
+      <div class="portfolio-chat-header">
+        <div>
+          <strong>Mohammed Assistant</strong>
+          <span>Ask about my skills, work, or experience</span>
+        </div>
+        <button id="portfolio-chat-close" aria-label="Close chat">×</button>
+      </div>
 
-  wrapper.appendChild(bubble);
-  chatBox.appendChild(wrapper);
-  chatBox.scrollTop = chatBox.scrollHeight;
-}
+      <div id="portfolio-chat-box" class="portfolio-chat-box">
+        <div class="portfolio-message assistant">
+          Hi, I’m Mohammed’s portfolio assistant. Ask me about his experience, skills, projects, or EdTech work.
+        </div>
+      </div>
 
-chatForm.addEventListener('submit', async (event) => {
-  event.preventDefault();
+      <form id="portfolio-chat-form" class="portfolio-chat-form">
+        <input
+          id="portfolio-chat-input"
+          type="text"
+          placeholder="Ask about Mohammed..."
+          autocomplete="off"
+        />
+        <button type="submit">Send</button>
+      </form>
 
-  const message = messageInput.value.trim();
-  if (!message) return;
+      <p id="portfolio-chat-status" class="portfolio-chat-status"></p>
+    </section>
+  `;
 
-  addMessage('user', message);
-  messageInput.value = '';
-  chatStatus.textContent = 'Thinking...';
+  document.body.appendChild(widget);
 
-  try {
-    const response = await fetch('/api/chat', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ message }),
-    });
+  const toggleButton = document.getElementById("portfolio-chat-toggle");
+  const closeButton = document.getElementById("portfolio-chat-close");
+  const chatWindow = document.getElementById("portfolio-chat-window");
+  const chatForm = document.getElementById("portfolio-chat-form");
+  const chatInput = document.getElementById("portfolio-chat-input");
+  const chatBox = document.getElementById("portfolio-chat-box");
+  const chatStatus = document.getElementById("portfolio-chat-status");
 
-    const data = await response.json();
-
-    if (!response.ok || !data.ok) {
-      addMessage('assistant', data.error || 'Something went wrong.');
-      chatStatus.textContent = 'Request failed.';
-      return;
-    }
-
-    addMessage('assistant', data.reply);
-    chatStatus.textContent = `Model used: ${data.model}`;
-  } catch (error) {
-    addMessage('assistant', 'Network error. Please try again.');
-    chatStatus.textContent = 'Network error.';
+  function openChat() {
+    chatWindow.classList.remove("portfolio-chat-hidden");
+    toggleButton.classList.add("portfolio-chat-hidden");
+    chatInput.focus();
   }
-});
+
+  function closeChat() {
+    chatWindow.classList.add("portfolio-chat-hidden");
+    toggleButton.classList.remove("portfolio-chat-hidden");
+  }
+
+  function addMessage(role, text) {
+    const message = document.createElement("div");
+    message.className = `portfolio-message ${role}`;
+    message.textContent = text;
+    chatBox.appendChild(message);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+  toggleButton.addEventListener("click", openChat);
+  closeButton.addEventListener("click", closeChat);
+
+  chatForm.addEventListener("submit", async function (event) {
+    event.preventDefault();
+
+    const message = chatInput.value.trim();
+    if (!message) return;
+
+    addMessage("user", message);
+    chatInput.value = "";
+    chatStatus.textContent = "Thinking...";
+
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ message })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.ok) {
+        addMessage("assistant", data.error || "Something went wrong.");
+        chatStatus.textContent = "Request failed.";
+        return;
+      }
+
+      addMessage("assistant", data.reply);
+      chatStatus.textContent = "";
+    } catch (error) {
+      addMessage("assistant", "Network error. Please try again.");
+      chatStatus.textContent = "Network error.";
+    }
+  });
+})();
