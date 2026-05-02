@@ -6,16 +6,25 @@ import requests
 from dotenv import load_dotenv
 from flask import Flask, jsonify, redirect, render_template, request
 
+# --------------------------------------------------
+# App setup
+# --------------------------------------------------
+
 BASE_DIR = Path(__file__).resolve().parent
-load_dotenv(BASE_DIR / ".env")
+
+# Force PythonAnywhere to load the .env file beside PF_server.py
+load_dotenv(BASE_DIR / ".env", override=True)
 
 app = Flask(__name__)
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-print(f"Loaded OPENROUTER_API_KEY: {'Yes' if OPENROUTER_API_KEY else 'No'}")
-OPENROUTER_MODEL = "openai/gpt-oss-120b:free"
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "openrouter/free")
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
+
+# --------------------------------------------------
+# Helpers
+# --------------------------------------------------
 
 def load_profile_context():
     profile_path = BASE_DIR / "profile_context.txt"
@@ -28,6 +37,28 @@ He works on educational content, assessment design, Arabic learning materials, a
 
     return profile_path.read_text(encoding="utf-8")
 
+
+def add_to_database(data):
+    database_path = BASE_DIR / "database.csv"
+
+    with open(database_path, mode="a", newline="", encoding="utf-8") as database:
+        email = data.get("email", "")
+        subject = data.get("subject", "")
+        message = data.get("message", "")
+
+        csv_writer = csv.writer(
+            database,
+            delimiter=",",
+            quotechar='"',
+            quoting=csv.QUOTE_MINIMAL,
+        )
+
+        csv_writer.writerow([email, subject, message])
+
+
+# --------------------------------------------------
+# Normal website routes
+# --------------------------------------------------
 
 @app.route("/")
 def home():
@@ -47,6 +78,15 @@ def submit_form():
     return "Something went wrong"
 
 
+@app.route("/<path:page>")
+def render_page(page):
+    return render_template(page)
+
+
+# --------------------------------------------------
+# Chatbot route
+# --------------------------------------------------
+
 @app.route("/api/chat", methods=["POST"])
 def api_chat():
     data = request.get_json(silent=True) or {}
@@ -63,7 +103,7 @@ def api_chat():
     if not OPENROUTER_API_KEY:
         return jsonify({
             "ok": False,
-            "error": "OPENROUTER_API_KEY is missing. Check your .env file."
+            "error": "OPENROUTER_API_KEY is missing. Check your .env file on PythonAnywhere."
         }), 500
 
     profile_context = load_profile_context()
@@ -87,7 +127,7 @@ PROFILE CONTEXT:
     messages = [
         {
             "role": "system",
-            "content": system_prompt
+            "content": system_prompt,
         }
     ]
 
@@ -98,12 +138,12 @@ PROFILE CONTEXT:
         if role in ["user", "assistant"] and content:
             messages.append({
                 "role": role,
-                "content": content[:1200]
+                "content": content[:1200],
             })
 
     messages.append({
         "role": "user",
-        "content": user_message
+        "content": user_message,
     })
 
     try:
@@ -124,21 +164,36 @@ PROFILE CONTEXT:
             timeout=60,
         )
 
-        result = response.json()
+        try:
+            result = response.json()
+        except ValueError:
+            return jsonify({
+                "ok": False,
+                "error": response.text[:500],
+            }), response.status_code or 500
 
         if response.status_code != 200:
             error_message = result.get("error", {}).get("message", str(result))
+
             return jsonify({
                 "ok": False,
-                "error": error_message
+                "error": error_message,
+                "status_code": response.status_code,
             }), response.status_code
 
         reply = result["choices"][0]["message"]["content"]
 
         return jsonify({
             "ok": True,
-            "reply": reply
+            "reply": reply,
+            "model": result.get("model", OPENROUTER_MODEL),
         })
+
+    except requests.exceptions.Timeout:
+        return jsonify({
+            "ok": False,
+            "error": "The AI request timed out. Please try again."
+        }), 504
 
     except Exception as error:
         return jsonify({
@@ -147,38 +202,30 @@ PROFILE CONTEXT:
         }), 500
 
 
+# --------------------------------------------------
+# Temporary debug route
+# --------------------------------------------------
+
 @app.route("/debug-assistant")
 def debug_assistant():
     profile_path = BASE_DIR / "profile_context.txt"
+    env_path = BASE_DIR / ".env"
 
     return jsonify({
+        "base_dir": str(BASE_DIR),
+        "env_path": str(env_path),
+        "env_file_exists": env_path.exists(),
         "api_key_loaded": bool(OPENROUTER_API_KEY),
+        "api_key_preview": OPENROUTER_API_KEY[:12] if OPENROUTER_API_KEY else None,
         "model": OPENROUTER_MODEL,
         "profile_context_exists": profile_path.exists(),
         "profile_context_characters": len(load_profile_context()),
     })
 
 
-@app.route("/<path:page>")
-def page(page):
-    return render_template(page)
-
-
-def add_to_database(data):
-    with open(BASE_DIR / "database.csv", mode="a", newline="", encoding="utf-8") as database:
-        email = data.get("email", "")
-        subject = data.get("subject", "")
-        message = data.get("message", "")
-
-        csv_writer = csv.writer(
-            database,
-            delimiter=",",
-            quotechar='"',
-            quoting=csv.QUOTE_MINIMAL,
-        )
-
-        csv_writer.writerow([email, subject, message])
-
+# --------------------------------------------------
+# Local development only
+# --------------------------------------------------
 
 if __name__ == "__main__":
     app.run(debug=True)
