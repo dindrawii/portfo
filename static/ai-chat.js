@@ -1,4 +1,9 @@
 (function () {
+  let chatHistory = [];
+  let conversationId = null;
+  let contextLoaded = false;
+  let contextLoading = false;
+
   const widget = document.createElement("div");
 
   widget.innerHTML = `
@@ -10,14 +15,14 @@
       <div class="portfolio-chat-header">
         <div>
           <strong>Mohammed Assistant</strong>
-          <span>Ask about my skills, work, or experience</span>
+          <span>Ask about Mohammed's skills, work, or experience</span>
         </div>
         <button id="portfolio-chat-close" aria-label="Close chat">×</button>
       </div>
 
       <div id="portfolio-chat-box" class="portfolio-chat-box">
         <div class="portfolio-message assistant">
-          Hi, I’m Mohammed’s portfolio assistant. Ask me about his experience, skills, projects, or EdTech work.
+          Hi, I’m Mohammed’s portfolio assistant. Open the chat and I’ll load the latest available profile context.
         </div>
       </div>
 
@@ -45,23 +50,72 @@
   const chatBox = document.getElementById("portfolio-chat-box");
   const chatStatus = document.getElementById("portfolio-chat-status");
 
-  function openChat() {
-    chatWindow.classList.remove("portfolio-chat-hidden");
-    toggleButton.classList.add("portfolio-chat-hidden");
-    chatInput.focus();
-  }
-
-  function closeChat() {
-    chatWindow.classList.add("portfolio-chat-hidden");
-    toggleButton.classList.remove("portfolio-chat-hidden");
-  }
-
   function addMessage(role, text) {
     const message = document.createElement("div");
     message.className = `portfolio-message ${role}`;
     message.textContent = text;
     chatBox.appendChild(message);
     chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+  async function loadContextOnce() {
+    if (contextLoaded || contextLoading) return;
+
+    contextLoading = true;
+    chatStatus.textContent = "Loading latest profile context...";
+    chatInput.disabled = true;
+
+    try {
+      const response = await fetch("/api/load-context", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({})
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.ok) {
+        addMessage("assistant", data.error || "Could not load profile context.");
+        chatStatus.textContent = `Context load failed: ${response.status}`;
+        return;
+      }
+
+      conversationId = data.conversation_id;
+      contextLoaded = true;
+
+      const linkedinStatus = data.debug?.linkedin?.status || "unknown";
+      const usedFallback = data.debug?.used_fallback_profile;
+
+      if (linkedinStatus === "loaded") {
+        chatStatus.textContent = "Profile context loaded.";
+      } else if (usedFallback) {
+        chatStatus.textContent = "LinkedIn live scrape unavailable; using profile cache.";
+      } else {
+        chatStatus.textContent = "Portfolio context loaded. LinkedIn live scrape unavailable.";
+      }
+
+      chatInput.disabled = false;
+      chatInput.focus();
+    } catch (error) {
+      addMessage("assistant", "Network error while loading profile context.");
+      chatStatus.textContent = "Context network error.";
+    } finally {
+      contextLoading = false;
+    }
+  }
+
+  async function openChat() {
+    chatWindow.classList.remove("portfolio-chat-hidden");
+    toggleButton.classList.add("portfolio-chat-hidden");
+    await loadContextOnce();
+    chatInput.focus();
+  }
+
+  function closeChat() {
+    chatWindow.classList.add("portfolio-chat-hidden");
+    toggleButton.classList.remove("portfolio-chat-hidden");
   }
 
   toggleButton.addEventListener("click", openChat);
@@ -73,9 +127,21 @@
     const message = chatInput.value.trim();
     if (!message) return;
 
+    if (!contextLoaded || !conversationId) {
+      addMessage("assistant", "Profile context is still loading. Please try again in a moment.");
+      return;
+    }
+
     addMessage("user", message);
+
+    chatHistory.push({
+      role: "user",
+      content: message
+    });
+
     chatInput.value = "";
     chatStatus.textContent = "Thinking...";
+    chatInput.disabled = true;
 
     try {
       const response = await fetch("/api/chat", {
@@ -83,22 +149,36 @@
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ message })
+        body: JSON.stringify({
+          message: message,
+          conversation_id: conversationId,
+          history: chatHistory
+        })
       });
 
       const data = await response.json();
 
       if (!response.ok || !data.ok) {
         addMessage("assistant", data.error || "Something went wrong.");
-        chatStatus.textContent = "Request failed.";
+        chatStatus.textContent = `Request failed: ${response.status}`;
         return;
       }
 
       addMessage("assistant", data.reply);
+
+      chatHistory.push({
+        role: "assistant",
+        content: data.reply
+      });
+
+      chatHistory = chatHistory.slice(-24);
       chatStatus.textContent = "";
     } catch (error) {
       addMessage("assistant", "Network error. Please try again.");
       chatStatus.textContent = "Network error.";
+    } finally {
+      chatInput.disabled = false;
+      chatInput.focus();
     }
   });
 })();
