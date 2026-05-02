@@ -74,11 +74,25 @@
         body: JSON.stringify({})
       });
 
-      const data = await response.json();
+      const rawText = await response.text();
+
+      let data;
+      try {
+        data = JSON.parse(rawText);
+      } catch (error) {
+        addMessage(
+          "assistant",
+          "The server did not return JSON from /api/load-context. Check PythonAnywhere error logs."
+        );
+        chatStatus.textContent = `Context load failed: ${response.status}`;
+        chatInput.disabled = false;
+        return;
+      }
 
       if (!response.ok || !data.ok) {
         addMessage("assistant", data.error || "Could not load profile context.");
         chatStatus.textContent = `Context load failed: ${response.status}`;
+        chatInput.disabled = false;
         return;
       }
 
@@ -99,8 +113,12 @@
       chatInput.disabled = false;
       chatInput.focus();
     } catch (error) {
-      addMessage("assistant", "Network error while loading profile context.");
+      addMessage(
+        "assistant",
+        "Network error while loading profile context. The chat is enabled, but the backend context route is failing."
+      );
       chatStatus.textContent = "Context network error.";
+      chatInput.disabled = false;
     } finally {
       contextLoading = false;
     }
