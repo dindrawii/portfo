@@ -1,8 +1,5 @@
 (function () {
   let chatHistory = [];
-  let conversationId = null;
-  let contextLoaded = false;
-  let contextLoading = false;
 
   const widget = document.createElement("div");
 
@@ -22,7 +19,7 @@
 
       <div id="portfolio-chat-box" class="portfolio-chat-box">
         <div class="portfolio-message assistant">
-          Hi, I’m Mohammed’s portfolio assistant. Open the chat and I’ll load the latest available profile context.
+          Hi, I’m Mohammed’s portfolio assistant. Ask me about his experience, skills, projects, or EdTech work.
         </div>
       </div>
 
@@ -50,90 +47,23 @@
   const chatBox = document.getElementById("portfolio-chat-box");
   const chatStatus = document.getElementById("portfolio-chat-status");
 
-  function addMessage(role, text) {
-    const message = document.createElement("div");
-    message.className = `portfolio-message ${role}`;
-    message.textContent = text;
-    chatBox.appendChild(message);
-    chatBox.scrollTop = chatBox.scrollHeight;
-  }
-
-  async function loadContextOnce() {
-    if (contextLoaded || contextLoading) return;
-
-    contextLoading = true;
-    chatStatus.textContent = "Loading latest profile context...";
-    chatInput.disabled = true;
-
-    try {
-      const response = await fetch("/api/load-context", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({})
-      });
-
-      const rawText = await response.text();
-
-      let data;
-      try {
-        data = JSON.parse(rawText);
-      } catch (error) {
-        addMessage(
-          "assistant",
-          "The server did not return JSON from /api/load-context. Check PythonAnywhere error logs."
-        );
-        chatStatus.textContent = `Context load failed: ${response.status}`;
-        chatInput.disabled = false;
-        return;
-      }
-
-      if (!response.ok || !data.ok) {
-        addMessage("assistant", data.error || "Could not load profile context.");
-        chatStatus.textContent = `Context load failed: ${response.status}`;
-        chatInput.disabled = false;
-        return;
-      }
-
-      conversationId = data.conversation_id;
-      contextLoaded = true;
-
-      const linkedinStatus = data.debug?.linkedin?.status || "unknown";
-      const usedFallback = data.debug?.used_fallback_profile;
-
-      if (linkedinStatus === "loaded") {
-        chatStatus.textContent = "Profile context loaded.";
-      } else if (usedFallback) {
-        chatStatus.textContent = "LinkedIn live scrape unavailable; using profile cache.";
-      } else {
-        chatStatus.textContent = "Portfolio context loaded. LinkedIn live scrape unavailable.";
-      }
-
-      chatInput.disabled = false;
-      chatInput.focus();
-    } catch (error) {
-      addMessage(
-        "assistant",
-        "Network error while loading profile context. The chat is enabled, but the backend context route is failing."
-      );
-      chatStatus.textContent = "Context network error.";
-      chatInput.disabled = false;
-    } finally {
-      contextLoading = false;
-    }
-  }
-
-  async function openChat() {
+  function openChat() {
     chatWindow.classList.remove("portfolio-chat-hidden");
     toggleButton.classList.add("portfolio-chat-hidden");
-    await loadContextOnce();
     chatInput.focus();
   }
 
   function closeChat() {
     chatWindow.classList.add("portfolio-chat-hidden");
     toggleButton.classList.remove("portfolio-chat-hidden");
+  }
+
+  function addMessage(role, text) {
+    const message = document.createElement("div");
+    message.className = `portfolio-message ${role}`;
+    message.textContent = text;
+    chatBox.appendChild(message);
+    chatBox.scrollTop = chatBox.scrollHeight;
   }
 
   toggleButton.addEventListener("click", openChat);
@@ -145,11 +75,6 @@
     const message = chatInput.value.trim();
     if (!message) return;
 
-    if (!contextLoaded || !conversationId) {
-      addMessage("assistant", "Profile context is still loading. Please try again in a moment.");
-      return;
-    }
-
     addMessage("user", message);
 
     chatHistory.push({
@@ -158,8 +83,8 @@
     });
 
     chatInput.value = "";
-    chatStatus.textContent = "Thinking...";
     chatInput.disabled = true;
+    chatStatus.textContent = "Thinking...";
 
     try {
       const response = await fetch("/api/chat", {
@@ -169,12 +94,23 @@
         },
         body: JSON.stringify({
           message: message,
-          conversation_id: conversationId,
           history: chatHistory
         })
       });
 
-      const data = await response.json();
+      const rawText = await response.text();
+
+      let data;
+      try {
+        data = JSON.parse(rawText);
+      } catch (error) {
+        addMessage(
+          "assistant",
+          "The server returned an invalid response. Check PythonAnywhere error logs."
+        );
+        chatStatus.textContent = `Request failed: ${response.status}`;
+        return;
+      }
 
       if (!response.ok || !data.ok) {
         addMessage("assistant", data.error || "Something went wrong.");
