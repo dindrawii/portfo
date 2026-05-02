@@ -1,19 +1,58 @@
-Mohammed Dindrawi is an EdTech Content Developer.
+FULL NAME:
+Mohammed Dindrawi
 
-LinkedIn profile:
-https://www.linkedin.com/in/mohammed-dindrawi
+PROFESSIONAL HEADLINE:
+EdTech Content Developer | Full-stack Developer | Coding Coach
 
-About:
-Paste your LinkedIn About section here.
+SHORT INTRODUCTION:
+Mohammed Dindrawi is an EdTech Content Developer who transforms curricula into structured digital assessments. His work focuses on high-school educational content, Qudrat preparation, Arabic learning materials, and digital assessment workflows.
 
-Experience:
-Paste your LinkedIn Experience section here.
+CORE PROFESSIONAL IDENTITY:
+Mohammed works at the intersection of education, assessment design, and technology. He develops structured educational materials that help convert curriculum content into clear, organized, student-friendly digital learning and assessment resources.
 
-Education:
-Paste your LinkedIn Education section here.
+EDTECH CONTENT DEVELOPMENT:
+Mohammed designs and develops comprehensive assessment materials, including complex multiple-choice questions and true/false item banks. His work covers several subjects, including Science, Mathematics, History, Geography, Islamic Studies, Arabic Language, and Technology.
 
-Skills:
-Paste your LinkedIn Skills here.
+CURRICULUM ALIGNMENT:
+Mohammed aligns educational content with high-school curricula and adapts learning and assessment materials from official ministry textbooks for the Sudanese education system.
 
-Projects:
-Paste your LinkedIn Projects here.
+ASSESSMENT DESIGN:
+Mohammed creates structured assessment content with clear questions, answer options, explanations, hints, and difficulty levels. He focuses on making assessment materials useful for learning, not just testing.
+
+QUDRAT AND APTITUDE TEST PREPARATION:
+Mohammed develops specialized quantitative and qualitative preparation materials for the Qiyas General Aptitude Test, known as Qudrat. His work includes engineering questions with detailed explanations, targeted hints, and graded difficulty levels.
+
+DIGITAL LEARNING DATASETS:
+Mohammed architects and formats large-scale educational datasets into structured formats for integration with digital learning environments and EdTech platforms.
+
+TECHNICAL SKILLS:
+- HTML
+- CSS
+- JavaScript
+- Python
+- Flask
+- Web development
+- Portfolio development
+- Digital learning workflows
+- Structured educational datasets
+
+FULL-STACK DEVELOPMENT:
+Mohammed has experience with full-stack development and works with HTML, CSS, JavaScript, and Python to build web-based projects.
+
+CODING COACH EXPERIENCE:
+Mohammed led interactive training sessions and coding workshops for the British Council, specializing in the Scratch programming language.
+
+TEACHING AND MENTORING:
+Mohammed has mentored students and educators. He helped students build foundational coding and problem-solving abilities and supported teachers in integrating computational thinking and block-based programming into their classrooms.
+
+EDUCATION:
+Mohammed studied Electronics Engineering at Sudan University of Science and Technology. He is also studying with Zero To Mastery Academy.
+
+PORTFOLIO SUMMARY:
+Mohammed’s portfolio presents him as an EdTech Content Developer focused on transforming curricula into structured digital assessments for high-school and Qudrat learning contexts.
+
+CONTACT:
+Visitors can contact Mohammed through the portfolio contact form for hiring, freelance, collaboration, EdTech, content development, assessment design, or web development opportunities.
+
+ASSISTANT BEHAVIOR RULES:
+The assistant should answer questions about Mohammed using only this profile context. It should not invent employers, clients, certifications, dates, private details, or project names that are not listed here. If a visitor asks for missing information, the assistant should say that the detail is not available yet and suggest contacting Mohammed through the portfolio.
