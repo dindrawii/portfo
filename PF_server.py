@@ -4,9 +4,7 @@ from pathlib import Path
 
 import requests
 from dotenv import load_dotenv
-from flask import Flask, jsonify, redirect, render_template, request
-
-# --------------------------------------------------
+from flask import Flask, jsonify, redirect, render_template, request, url_for# --------------------------------------------------
 # App setup
 # --------------------------------------------------
 
@@ -63,6 +61,34 @@ def add_to_database(data):
 @app.route("/")
 def home():
     return render_template("index.html")
+
+@app.after_request
+def inject_chatbot_assets(response):
+    content_type = response.headers.get("Content-Type", "")
+
+    if "text/html" not in content_type:
+        return response
+
+    html = response.get_data(as_text=True)
+
+    # Avoid adding the chatbot twice if one page already has it manually.
+    if "ai-chat.js" in html or "portfolio-chat-toggle" in html:
+        return response
+
+    chatbot_assets = f"""
+<link rel="stylesheet" href="{url_for('static', filename='chat.css')}">
+<script src="{url_for('static', filename='ai-chat.js')}"></script>
+"""
+
+    if "</body>" in html:
+        html = html.replace("</body>", chatbot_assets + "\n</body>")
+    else:
+        html += chatbot_assets
+
+    response.set_data(html)
+    response.headers["Content-Length"] = str(len(response.get_data()))
+
+    return response
 
 
 @app.route("/submit_form", methods=["POST", "GET"])

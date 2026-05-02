@@ -1,4 +1,7 @@
 (function () {
+  if (document.getElementById("portfolio-chat-toggle")) {
+    return;
+  }
   let chatHistory = [];
 
   const widget = document.createElement("div");
