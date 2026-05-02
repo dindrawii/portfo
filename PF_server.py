@@ -12,7 +12,8 @@ load_dotenv(BASE_DIR / ".env")
 app = Flask(__name__)
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "openrouter/free")
+print(f"Loaded OPENROUTER_API_KEY: {'Yes' if OPENROUTER_API_KEY else 'No'}")
+OPENROUTER_MODEL = "openai/gpt-oss-120b:free"
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 
