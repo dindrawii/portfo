@@ -4,13 +4,13 @@ from pathlib import Path
 
 import requests
 from dotenv import load_dotenv
-from flask import Flask, jsonify, redirect, render_template, request, url_for# --------------------------------------------------
+from flask import Flask, jsonify, redirect, render_template, request, url_for
+
+# --------------------------------------------------
 # App setup
 # --------------------------------------------------
 
 BASE_DIR = Path(__file__).resolve().parent
-
-# Force PythonAnywhere to load the .env file beside PF_server.py
 load_dotenv(BASE_DIR / ".env", override=True)
 
 app = Flask(__name__)
@@ -18,6 +18,38 @@ app = Flask(__name__)
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "openrouter/free")
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+
+
+# --------------------------------------------------
+# Automatically add chatbot files to every HTML page
+# --------------------------------------------------
+
+@app.after_request
+def inject_chatbot_assets(response):
+    content_type = response.headers.get("Content-Type", "")
+
+    if "text/html" not in content_type:
+        return response
+
+    html = response.get_data(as_text=True)
+
+    if "ai-chat.js" in html:
+        return response
+
+    chatbot_assets = f"""
+<link rel="stylesheet" href="{url_for('static', filename='chat.css')}">
+<script src="{url_for('static', filename='ai-chat.js')}"></script>
+"""
+
+    if "</body>" in html:
+        html = html.replace("</body>", chatbot_assets + "\n</body>")
+    else:
+        html += chatbot_assets
+
+    response.set_data(html)
+    response.headers["Content-Length"] = str(len(response.get_data()))
+
+    return response
 
 
 # --------------------------------------------------
@@ -55,40 +87,12 @@ def add_to_database(data):
 
 
 # --------------------------------------------------
-# Normal website routes
+# Website routes
 # --------------------------------------------------
 
 @app.route("/")
 def home():
     return render_template("index.html")
-
-@app.after_request
-def inject_chatbot_assets(response):
-    content_type = response.headers.get("Content-Type", "")
-
-    if "text/html" not in content_type:
-        return response
-
-    html = response.get_data(as_text=True)
-
-    # Avoid adding the chatbot twice if one page already has it manually.
-    if "ai-chat.js" in html or "portfolio-chat-toggle" in html:
-        return response
-
-    chatbot_assets = f"""
-<link rel="stylesheet" href="{url_for('static', filename='chat.css')}">
-<script src="{url_for('static', filename='ai-chat.js')}"></script>
-"""
-
-    if "</body>" in html:
-        html = html.replace("</body>", chatbot_assets + "\n</body>")
-    else:
-        html += chatbot_assets
-
-    response.set_data(html)
-    response.headers["Content-Length"] = str(len(response.get_data()))
-
-    return response
 
 
 @app.route("/submit_form", methods=["POST", "GET"])
@@ -246,6 +250,7 @@ def debug_assistant():
         "model": OPENROUTER_MODEL,
         "profile_context_exists": profile_path.exists(),
         "profile_context_characters": len(load_profile_context()),
+        "chat_injection_enabled": True,
     })
 
 
