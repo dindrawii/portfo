@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 *)",
+      "Bash(node -c static/model-battle.js)",
+      "Bash(pip3 install *)",
+      "Bash(/Users/24999/AppData/Local/Programs/Python/Python311/python.exe *)",
+      "Bash(/c/Users/24999/AppData/Local/Programs/Python/Python311/python.exe *)",
+      "Bash(find templates *)"
+    ]
+  }
+}

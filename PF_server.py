@@ -1,5 +1,6 @@
 import csv
 import os
+import random
 from pathlib import Path
 
 import requests
@@ -18,6 +19,45 @@ app = Flask(__name__)
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "openrouter/free")
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+
+# --------------------------------------------------
+# Model pool for the "Pick Your Best Model" game
+# --------------------------------------------------
+OPENROUTER_FREE_MODELS = [
+    {
+        "id": "qwen/qwen3-coder:free",
+        "name": "Qwen3 Coder 480B",
+        "category": "coding / agentic tasks",
+    },
+    {
+        "id": "inclusionai/ring-2.6-1t:free",
+        "name": "InclusionAI R2.6-1T",
+        "category": "reasoning",
+    },
+    {
+        "id": "openai/gpt-oss-20b:free",
+        "name": "OpenAI GPT-OSS 20B",
+        "category": "agentic / long-context",
+    },
+    {
+        "id": "openai/gpt-oss-120b:free",
+        "name": "OpenAI GPT-OSS 120B Free",
+        "category": "general reasoning / agentic",
+    },
+]
+
+
+def pick_two_models():
+    """Randomly select two different models from the pool."""
+    if len(OPENROUTER_FREE_MODELS) < 2:
+        raise ValueError("Model pool must contain at least two models.")
+    pair = random.sample(OPENROUTER_FREE_MODELS, 2)
+    return pair[0], pair[1]
+
+
+def validate_model_id(model_id):
+    """Check that a model ID exists in the pool."""
+    return any(m["id"] == model_id for m in OPENROUTER_FREE_MODELS)
 
 
 # --------------------------------------------------
@@ -111,6 +151,137 @@ def submit_form():
 @app.route("/<path:page>")
 def render_page(page):
     return render_template(page)
+
+
+# --------------------------------------------------
+# Model Battle page route
+# --------------------------------------------------
+
+@app.route("/model-battle")
+def model_battle():
+    return render_template("model_battle.html", openrouter_free_models=OPENROUTER_FREE_MODELS)
+
+
+# --------------------------------------------------
+# Model Battle API
+# --------------------------------------------------
+
+SYSTEM_PROMPT = "You are a helpful assistant. Answer clearly and directly."
+
+
+@app.route("/api/model-battle", methods=["POST"])
+def api_model_battle():
+    data = request.get_json(silent=True) or {}
+    prompt = (data.get("prompt") or "").strip()
+
+    # Allow caller to optionally pass specific model IDs; otherwise pick randomly.
+    model_a_id = (data.get("model_a") or "").strip() or None
+    model_b_id = (data.get("model_b") or "").strip() or None
+
+    # Validate API key
+    if not OPENROUTER_API_KEY:
+        return jsonify({
+            "ok": False,
+            "error": "OPENROUTER_API_KEY is not configured on the server."
+        }), 500
+
+    # Validate prompt
+    if not prompt:
+        return jsonify({
+            "ok": False,
+            "error": "Prompt is required. Please enter a question or instruction."
+        }), 400
+
+    # Resolve model pair
+    if model_a_id and model_b_id:
+        if model_a_id == model_b_id:
+            return jsonify({
+                "ok": False,
+                "error": "The two models must be different."
+            }), 400
+        if not validate_model_id(model_a_id):
+            return jsonify({
+                "ok": False,
+                "error": f"Unknown model A: {model_a_id}"
+            }), 400
+        if not validate_model_id(model_b_id):
+            return jsonify({
+                "ok": False,
+                "error": f"Unknown model B: {model_b_id}"
+            }), 400
+        model_a = next(m for m in OPENROUTER_FREE_MODELS if m["id"] == model_a_id)
+        model_b = next(m for m in OPENROUTER_FREE_MODELS if m["id"] == model_b_id)
+    else:
+        model_a, model_b = pick_two_models()
+
+    # Call both models
+    def call_model(model_info):
+        try:
+            resp = requests.post(
+                OPENROUTER_URL,
+                headers={
+                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": "https://dindrawii.pythonanywhere.com",
+                    "X-Title": "Pick Your Best Model - Mohammed Portfolio",
+                },
+                json={
+                    "model": model_info["id"],
+                    "messages": [
+                        {"role": "system", "content": SYSTEM_PROMPT},
+                        {"role": "user", "content": prompt},
+                    ],
+                    "temperature": 0.7,
+                    "max_tokens": 500,
+                },
+                timeout=60,
+            )
+            if resp.status_code != 200:
+                error_detail = ""
+                try:
+                    err_json = resp.json()
+                    error_detail = err_json.get("error", {}).get("message", resp.text[:300])
+                except Exception:
+                    error_detail = resp.text[:300]
+                return {
+                    "ok": False,
+                    "error": f"Model {model_info['name']} returned status {resp.status_code}: {error_detail}",
+                }
+            result = resp.json()
+            reply = result["choices"][0]["message"]["content"]
+            return {"ok": True, "reply": reply}
+        except requests.exceptions.Timeout:
+            return {"ok": False, "error": "Request timed out."}
+        except Exception as exc:
+            return {"ok": False, "error": str(exc)}
+
+    result_a = call_model(model_a)
+    result_b = call_model(model_b)
+
+    # Build response
+    response_payload = {
+        "model_a": model_a,
+        "model_b": model_b,
+    }
+
+    if not result_a["ok"] and not result_b["ok"]:
+        return jsonify({
+            "ok": False,
+            "error": "Both models failed to respond. Please try again.",
+            "details": {
+                "model_a_error": result_a["error"],
+                "model_b_error": result_b["error"],
+            },
+            **response_payload,
+        }), 502
+
+    response_payload["response_a"] = result_a.get("reply") or None
+    response_payload["response_b"] = result_b.get("reply") or None
+    response_payload["model_a_error"] = result_a.get("error") if not result_a["ok"] else None
+    response_payload["model_b_error"] = result_b.get("error") if not result_b["ok"] else None
+    response_payload["ok"] = True
+
+    return jsonify(response_payload)
 
 
 # --------------------------------------------------
